@@ -1,4 +1,4 @@
-# ClickFix
+# ClickFix - add wheel feature
 ### Tame your mouse - stop annoying repeat clicks
 > ***Windows Only*** - *Should work on any version - tested on Windows 7, 8 and 10*
 
