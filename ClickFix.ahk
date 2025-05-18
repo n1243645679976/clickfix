@@ -19,11 +19,13 @@ settings["mb"] := ["Mouse", "middle_button", false]
 settings["rb"] := ["Mouse", "right_button", false]
 settings["fb"] := ["Mouse", "forward_button", false]
 settings["bb"] := ["Mouse", "back_button", false]
+settings["wb"] := ["Mouse", "Wheel_button", false]
 settings["lpr"] := ["General", "left_pressure", 25, "Left click"]
 settings["mpr"] := ["General", "middle_pressure", 25, "Middle click"]
 settings["rpr"] := ["General", "right_pressure", 25, "Right click"]
 settings["fpr"] := ["General", "forward_pressure", 25, "Forward click"]
 settings["bpr"] := ["General", "back_pressure", 25, "Back click"]
+settings["wpr"] := ["General", "Wheel_pressure", 25, "Wheel"]
 settings["sww"] := ["General", "startup_run", false]
 settings["dis"] := ["General", "disabled", false]
 
@@ -42,6 +44,9 @@ last_f_up := 0
 
 last_b_down := 0
 last_b_up := 0
+
+last_w_down := 0
+last_w_up := 0
 
 ; Let's assume that this is a first-run, since there's no settings
 if !FileExist(settings_file)
@@ -67,6 +72,7 @@ OptionsMenu.Add("Fix Middle Button", fmb)
 OptionsMenu.Add("Fix Right Button", frb)
 OptionsMenu.Add("Fix Forward Button", ffb)
 OptionsMenu.Add("Fix Back Button", fbb)
+OptionsMenu.Add("Fix Wheel Button", fwb)
 OptionsMenu.Add()
 OptionsMenu.Add("Start with Windows", sww)
 TrayMenu.Add("Quick Options", OptionsMenu)
@@ -104,7 +110,7 @@ settingsGui(name := "", pos := "", mu := "") {
 
     ; Standard Settings
     MainGui.SetFont("s8 c505050", "Trebuchet MS")
-    MainGui.Add("GroupBox", "yp+49 w235 h210", "Standard Settings")
+    MainGui.Add("GroupBox", "yp+49 w235 h235", "Standard Settings")
     MainGui.SetFont("s10 c10101f", "Trebuchet MS")
     MainGui.Add("Text", "Left w210 xp+12 yp+22", "Choose mouse buttons to fix:")
 
@@ -118,6 +124,8 @@ settingsGui(name := "", pos := "", mu := "") {
     cb.OnEvent("Click", settingsCheckBoxes)
     cb := MainGui.Add("Checkbox", "yp+25 vcheck_back_button", "Back Button")
     cb.OnEvent("Click", settingsCheckBoxes)
+    cb := MainGui.Add("Checkbox", "yp+25 vcheck_wheel_button", "Wheel Button")
+    cb.OnEvent("Click", settingsCheckBoxes)
 
     MainGui.Add("Text", "Left w210 yp+19", "Other Settings:")
     MainGui.Add("Checkbox", "yp+21 vcheck_start_with_windows", "Start on Windows Startup")
@@ -127,16 +135,16 @@ settingsGui(name := "", pos := "", mu := "") {
 
     ; Buttons
     MainGui.SetFont("s8 c101013 w340", "Arial")
-    OkBtn := MainGui.Add("Button", "Default xp Y338 w75", "Ok")
+    OkBtn := MainGui.Add("Button", "Default xp Y363 w75", "Ok")
     OkBtn.OnEvent("Click", settingsButtonOk)
-    ApplyBtn := MainGui.Add("Button", "xp+80 Y338 w75", "Apply")
+    ApplyBtn := MainGui.Add("Button", "xp+80 Y363 w75", "Apply")
     ApplyBtn.OnEvent("Click", settingsButtonApply)
-    CancelBtn := MainGui.Add("Button", "xp+80 Y338 w75", "Cancel")
+    CancelBtn := MainGui.Add("Button", "xp+80 Y363 w75", "Cancel")
     CancelBtn := CancelBtn.OnEvent("Click", settingsButtonCancel)
 
     ; Advanced Settings
     MainGui.SetFont("s8 c505050", "Trebuchet MS")
-    MainGui.Add("GroupBox", "xp+85 y92 w235 h275", "Advanced/Tweaking Settings")
+    MainGui.Add("GroupBox", "xp+85 y92 w235 h310", "Advanced/Tweaking Settings")
     MainGui.SetFont("s10 c101013", "Trebuchet MS")
     MainGui.Add("Text", "Left w210 xp+12 yp+22", "`"Pressure`" for each mouse button:")
     MainGui.SetFont("s7 c101013 w700", "Arial")
@@ -155,11 +163,14 @@ settingsGui(name := "", pos := "", mu := "") {
     MainGui.Add("Link", "Left w210 yp+32 xp+7 vslide_readout_b", "Back click has 0ms of delay.")
     sl := MainGui.Add("Slider", "yp+13 xp-7 w218 vslide_pressure_b", "20")
     sl.OnEvent("Change", settingsPressureSlider)
+    MainGui.Add("Link", "Left w210 yp+32 xp+7 vslide_readout_w", "Wheel click has 0ms of delay.")
+    sl := MainGui.Add("Slider", "yp+13 xp-7 w218 vslide_pressure_w", "20")
+    sl.OnEvent("Change", settingsPressureSlider)
 
     loadSettingsToGui()
     settingsCheckBoxes()
     MainGui.Title := "ClickFix Settings"
-    MainGui.Show("W530 H380 Center")
+    MainGui.Show("W540 H410 Center")
 
     ; Show a warning if the program is disabled
     If (settings["dis"][3]) {
@@ -177,6 +188,7 @@ settingsCheckBoxes(ctxt := "", val := "")
     MainGui["check_right_button"].Enabled := MainGui["slide_pressure_r"].Value
     MainGui["check_forward_button"].Enabled := MainGui["slide_pressure_f"].Value
     MainGui["check_back_button"].Enabled := MainGui["slide_pressure_b"].Value
+    MainGui["check_wheel_button"].Enabled := MainGui["slide_pressure_w"].Value
     settingsPressureSlider()
 }
 
@@ -189,6 +201,7 @@ settingsPressureSlider(ctxt := "", val := "")
     MainGui["slide_readout_r"].Text := slidePressureReadout(settings["rpr"], MainGui["check_right_button"].Value)
     MainGui["slide_readout_f"].Text := slidePressureReadout(settings["fpr"], MainGui["check_forward_button"].Value)
     MainGui["slide_readout_b"].Text := slidePressureReadout(settings["bpr"], MainGui["check_back_button"].Value)
+    MainGui["slide_readout_w"].Text := slidePressureReadout(settings["wpr"], MainGui["check_wheel_button"].Value)
 }
 
 settingsButtonOk(ctxt := "", val := "")
@@ -230,16 +243,19 @@ loadSettingsToGui()
     MainGui["check_right_button"].Value := settings["rb"][3]
     MainGui["check_forward_button"].Value := settings["fb"][3]
     MainGui["check_back_button"].Value := settings["bb"][3]
+    MainGui["check_wheel_button"].Value := settings["wb"][3]
     MainGui["slide_pressure_l"].Value := settings["lpr"][3]
     MainGui["slide_pressure_m"].Value := settings["mpr"][3]
     MainGui["slide_pressure_r"].Value := settings["rpr"][3]
     MainGui["slide_pressure_f"].Value := settings["fpr"][3]
     MainGui["slide_pressure_b"].Value := settings["bpr"][3]
+	MainGui["slide_pressure_w"].Value := settings["wpr"][3]
     MainGui["slide_readout_l"].Text := slidePressureReadout(settings["lpr"], settings["lb"][3])
     MainGui["slide_readout_m"].Text := slidePressureReadout(settings["mpr"], settings["mb"][3])
     MainGui["slide_readout_r"].Text := slidePressureReadout(settings["rpr"], settings["rb"][3])
     MainGui["slide_readout_f"].Text := slidePressureReadout(settings["fpr"], settings["fb"][3])
     MainGui["slide_readout_b"].Text := slidePressureReadout(settings["bpr"], settings["bb"][3])
+	MainGui["slide_readout_w"].Text := slidePressureReadout(settings["wpr"], settings["wb"][3])
     MainGui["check_start_with_windows"].Value := settings["sww"][3]
 }
 
@@ -252,6 +268,7 @@ pullSettingsFromGui()
     settings["rb"][3] := MainGui["check_right_button"].Value
     settings["fb"][3] := MainGui["check_forward_button"].Value
     settings["bb"][3] := MainGui["check_back_button"].Value
+	settings["wb"][3] := MainGui["check_wheel_button"].Value
     bufferSlidePressure()
     settings["sww"][3] := MainGui["check_start_with_windows"].Value
     save()
@@ -269,6 +286,7 @@ bufferSlidePressure()
     settings["rpr"][3] := MainGui["slide_pressure_r"].Value
     settings["fpr"][3] := MainGui["slide_pressure_f"].Value
     settings["bpr"][3] := MainGui["slide_pressure_b"].Value
+	settings["wpr"][3] := MainGui["slide_pressure_w"].Value
 }
 
 slidePressureReadout(obj, toggler := 1)
@@ -323,6 +341,12 @@ updateTrayMenuState()
         OptionsMenu.Check("Fix Back Button")
     } else {
         OptionsMenu.UnCheck("Fix Back Button")
+    }
+	
+    if (settings["wb"][3] == true) {
+        OptionsMenu.Check("Fix Wheel Button")
+    } else {
+        OptionsMenu.UnCheck("Fix Wheel Button")
     }
 
     if (settings["sww"][3] == true) {
@@ -402,6 +426,15 @@ fbb(name := "", pos := "", mu := "")
     global
     OptionsMenu.ToggleCheck("Fix Back Button")
     settings["bb"][3] := !settings["bb"][3]
+    save()
+    loadSettingsToGui()
+}
+
+fwb(name := "", pos := "", mu := "")
+{
+    global
+    OptionsMenu.ToggleCheck("Fix Wheel Button")
+    settings["wb"][3] := !settings["wb"][3]
     save()
     loadSettingsToGui()
 }
@@ -607,5 +640,26 @@ LButton up::
     if (A_TickCount - last_b_up >= slidePressureScale(settings["bpr"][3])) {
         Send "{Blind}{XButton1 Up}"
         last_b_up := A_TickCount
+    }
+}
+
+
+#HotIf settings["wb"][3] and !settings["dis"][3]
+*WheelUp::
+{
+    global
+    if (A_TickCount - last_w_up >= slidePressureScale(settings["wpr"][3])) {
+        Send "{Blind}{WheelUp}"
+        last_w_up := A_TickCount
+    }
+}
+
+#HotIf settings["wb"][3] and !settings["dis"][3]
+*WheelDown::
+{
+    global
+    if (A_TickCount - last_w_down >= slidePressureScale(settings["wpr"][3])) {
+        Send "{Blind}{WheelDown}"
+        last_w_down := A_TickCount
     }
 }
